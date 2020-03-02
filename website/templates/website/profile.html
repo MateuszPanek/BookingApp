@@ -1,0 +1,30 @@
+{% extends 'website/home.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+    {% if not user.is_staff %}
+        <div class="content-section">
+            <div class="media">
+                <img class="rounded-circle account-img" src="{{ user.clientprofile.image.url }}">
+                <div class="media-body">
+                    <h2 class="account-heading">{{ user.first_name }}</h2>
+                    <p class="text-secondary">{{ user.email }}</p>
+                </div>
+            </div>
+            <a href="{% url 'edit_profile' %}" class="btn btn-outline-info">Edit</a>
+        </div>
+    {% elif user.is_staff %}
+        <div class="content-section">
+            <div class="media">
+                <img class="rounded-circle account-img" src="{{ user.clientprofile.image.url }}">
+                <div class="media-body">
+                    <h2 class="account-heading">{{ user.first_name }}</h2>
+                    <p class="text-secondary">{{ user.email }}</p>
+                </div>
+            </div>
+            <a href="{% url 'edit_profile' %}" class="btn btn-outline-info">Edit</a>
+            <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+        </div>
+    {% endif %}
+
+{% endblock %}
