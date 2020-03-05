@@ -5,6 +5,7 @@ from django.views import View
 
 from BookingApp.settings import PLATFORM_NAME
 from clients import forms as clients_forms
+from personnel import forms as personnel_forms
 from .forms import ContactForm
 from .messages import send_email
 from .models import Service
@@ -28,14 +29,14 @@ def edit_profile(request):
         user_form = clients_forms.ClientUpdateForm(request.POST, instance=request.user)
 
         if request.user.is_staff:
-            profile_form = clients_forms.ClientProfileUpdateForm(request.POST,
-                                                                 request.FILES,
-                                                                 instance=request.user.clientprofile)
+            profile_form = personnel_forms.PersonnelProfileUpdateForm(request.POST,
+                                                                      request.FILES,
+                                                                      instance=request.user.personnelprofile)
 
         elif not request.user.is_staff:
             profile_form = clients_forms.ClientProfileUpdateForm(request.POST,
                                                                  request.FILES,
-                                                                 instance=request.user.clientprofile)
+                                                                 instance=request.user.personnelprofile)
 
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
@@ -46,7 +47,7 @@ def edit_profile(request):
     else:
 
         if request.user.is_staff:
-            profile_form = clients_forms.ClientProfileUpdateForm(instance=request.user.clientprofile)
+            profile_form = personnel_forms.PersonnelProfileUpdateForm(instance=request.user.personnelprofile)
 
         elif not request.user.is_staff:
             profile_form = clients_forms.ClientProfileUpdateForm(instance=request.user.clientprofile)

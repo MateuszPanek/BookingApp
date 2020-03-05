@@ -14,7 +14,7 @@
     {% elif user.is_staff %}
         <div class="content-section">
             <div class="media">
-                <img class="rounded-circle account-img" src="{{ user.clientprofile.image.url }}">
+                <img class="rounded-circle account-img" src="{{ user.personnelprofile.image.url }}">
                 <div class="media-body">
                     <h2 class="account-heading">{{ user.first_name }}</h2>
                     <p class="text-secondary">{{ user.email }}</p>
