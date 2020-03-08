@@ -5,6 +5,7 @@ from BookingApp.settings import PLATFORM_NAME, PLATFORM_URL
 from website.messages import send_email
 from .forms import ClientRegisterForm
 from .models import ClientProfile
+from .tokens import create_token
 
 
 def register(request):
@@ -17,7 +18,9 @@ def register(request):
             client = form.save(commit=False)
             client.is_active = False
             form.save()
-            token = client.clientprofile.registration_token
+            token = create_token()
+            ClientProfile.objects.create(user=form.instance, registration_token=token)
+            # token = client.clientprofile.registration_token
 
             details = {
 
