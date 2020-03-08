@@ -24,6 +24,7 @@ from clients import views as clients_views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('website.urls')),
+    path('news/', include('blog.urls')),
     # path('register/', include('clients.urls')),
     path('client/', include('clients.urls')),
     path('register/', clients_views.register, name='register'),

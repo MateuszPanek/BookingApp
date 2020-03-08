@@ -1,0 +1,30 @@
+{% extends "website/home.html" %}
+{% block content %}
+    {% for service in services %}
+        <article class="media content-section">
+            {#          <img class="rounded-circle article-img" src="{{ post.author.profile.image.url }}">#}
+            <div class="media-body">
+                <div class="article-metadata">
+                    <a class="mr-2" href="#">{{ service.name }}</a>
+                    <small class="text-muted">{{ service.duration }} mins</small>
+                </div>
+                <h2><a class="article-title" href="#">{{ service.name }}</a></h2>
+                <p class="article-content">{{ service.description }}</p>
+            </div>
+        </article>
+    {% endfor %}
+{% endblock content %}
+
+<article id='offer'>
+    <section>
+        <div class='col-md-8'>
+            {% for service in services %}
+                <ul>
+                    <p><h4>{{ service.name }}</h4></p>
+                    <p>Duration: {{ service.duration }} min</p>
+                    <p>Price: {{ service.price }} $</p>
+                </ul>
+            {% endfor %}
+        </div>
+    </section>
+</article>

@@ -24,6 +24,7 @@
             <div class="collapse navbar-collapse" id="navbarToggle">
                 <div class="navbar-nav mr-auto">
                     <a class="nav-item nav-link" href="/">Home</a>
+                    <a class="nav-item nav-link" href="{% url 'news' %}">News</a>
                     <a class="nav-item nav-link" href="#">About</a>
                     <a class="nav-item nav-link" href="{% url 'contact' %}">Contact</a>
                 </div>
@@ -97,13 +98,6 @@
         {% endif %}
         </div>
 </main>
-{% for service in services %}
-    <h1>{{ service.name }}</h1>
-    <h2>{{ service.description }}</h2>
-    <h2>{{ service.price }}</h2>
-    <h2>{{ service.duration }}</h2>
-{% endfor %}
-
 
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
         integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
