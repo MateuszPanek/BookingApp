@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.views import View
+from django.views.generic import ListView
 
 from BookingApp.settings import PLATFORM_NAME
 from clients import forms as clients_forms
@@ -16,6 +17,12 @@ def home(request):
         'services': Service.objects.all()
     }
     return render(request, 'website/home.html', context)
+
+
+class ServicesList(ListView):
+    model = Service
+    template_name = 'website/services.html'
+    context_object_name = 'services'
 
 
 @login_required
@@ -36,7 +43,7 @@ def edit_profile(request):
         elif not request.user.is_staff:
             profile_form = clients_forms.ClientProfileUpdateForm(request.POST,
                                                                  request.FILES,
-                                                                 instance=request.user.personnelprofile)
+                                                                 instance=request.user.clientprofile)
 
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()

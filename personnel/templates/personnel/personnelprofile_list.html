@@ -1,0 +1,23 @@
+{% extends "website/home.html" %}
+{% block content %}
+    {% for object in objects %}
+        <article class="media content-section">
+            <img class="rounded-circle article-img" src="{{ object.image.url }}">
+            <div class="media-body">
+                <div class="article-metadata">
+                    {% if request.user.is_superuser %}
+                    <a class="mr-2" href="{% url 'personnel_update' object.user.id %}">{{ object.user.first_name }} {{ object.user.last_name }}</a>
+                    {% else %}
+                    <a class="mr-2">{{ object.user.first_name }} {{ object.user.last_name }}</a>
+                    {% endif %}
+                    <small class="text-muted">{{ object.birth_date|date:'d M Y' }}</small>
+                </div>
+                <p class="article-content">{{ object.user.email }}</p>
+            </div>
+        </article>
+    {% endfor %}
+    {% if request.user.is_superuser %}
+        <a href="{% url 'personnel_create' %}" class="btn btn-outline-info">Create Personnel Profile</a>
+    {% endif %}
+     <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+{% endblock content %}

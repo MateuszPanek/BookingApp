@@ -24,6 +24,7 @@
             <div class="collapse navbar-collapse" id="navbarToggle">
                 <div class="navbar-nav mr-auto">
                     <a class="nav-item nav-link" href="/">Home</a>
+                    <a class="nav-item nav-link" href="{% url 'news' %}">News</a>
                     <a class="nav-item nav-link" href="#">About</a>
                     <a class="nav-item nav-link" href="{% url 'contact' %}">Contact</a>
                 </div>
@@ -81,7 +82,7 @@
                     </p>
                 </div>
             </div>
-        {% elif user.is_authenticated and user.is_staff %}
+        {% elif user.is_authenticated and user.is_staff and not user.is_superuser %}
             <div class="col-md-4">
             <div class="content-section">
                 <h3>Our Sidebar</h3>
@@ -94,16 +95,22 @@
                 </ul>
                 </p>
             </div>
+        {% elif user.is_authenticated and user.is_superuser %}
+            <div class="col-md-4">
+            <div class="content-section">
+                <h3>Administration</h3>
+                <p class='text-muted'>Welcome to your administration panel.
+                <ul class="list-group">
+                    <li class="list-group-item list-group-item-light"><a href="{% url 'post-create' %}">New Post</a></li>
+                    <li class="list-group-item list-group-item-light"><a href="{% url 'personnel_list' %}">Personnel</a></li>
+                    <li class="list-group-item list-group-item-light">Calendars</li>
+                    <li class="list-group-item list-group-item-light">etc</li>
+                </ul>
+                </p>
+            </div>
         {% endif %}
         </div>
 </main>
-{% for service in services %}
-    <h1>{{ service.name }}</h1>
-    <h2>{{ service.description }}</h2>
-    <h2>{{ service.price }}</h2>
-    <h2>{{ service.duration }}</h2>
-{% endfor %}
-
 
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
         integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"

@@ -5,7 +5,7 @@
     {% if not user.is_staff %}
         <div class="content-section">
             <div class="media">
-                <img class="rounded-circle account-img" src="{{ user.personnelprofile.image.url }}">
+                <img class="rounded-circle account-img" src="{{ user.clientprofile.image.url }}">
                 <div class="media-body">
                     <h2 class="account-heading">{{ user.first_name }}</h2>
                     <p class="text-secondary">{{ user.email }}</p>
@@ -26,6 +26,7 @@
                 <a href="{% url 'edit_profile' %}" class="btn btn-outline-info">Edit</a>
             {% elif user.is_staff %}
                 <a href="{% url 'edit_profile' %}" class="btn btn-outline-info">Edit</a>
+                <a href="{% url 'post-create' %}" class="btn btn-outline-info">New Post</a>
             {% endif %}
             <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
         </div>

@@ -13,7 +13,7 @@ class PersonnelProfile(models.Model):
     image = models.ImageField(default='profile_pics/default.jpg', upload_to='profile_pics')
 
     def __str__(self):
-        return f'Personnel : {self.user.first_name} {self.user.last_name}'
+        return f'{self.user.first_name} {self.user.last_name}'
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
