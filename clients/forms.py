@@ -15,6 +15,16 @@ class ClientRegisterForm(UserCreationForm):
         fields = ['first_name', 'last_name', 'username', 'email', 'password1', 'password2']
 
 
+class ClientCreateForm(forms.ModelForm):
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'first_name', 'last_name']
+        widgets = {
+            'password': forms.PasswordInput()
+        }
+
+
 class ClientUpdateForm(forms.ModelForm):
     email = forms.EmailField()
 
@@ -23,7 +33,19 @@ class ClientUpdateForm(forms.ModelForm):
         fields = ['username', 'email', 'first_name', 'last_name']
 
 
+class ClientUpdateByStaffForm(forms.ModelForm):
+    email = forms.EmailField()
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'is_active']
+
+
 class ClientProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = ClientProfile
         fields = ['birth_date', 'address', 'image']
+
+
+class SendCredentialsForm(forms.Form):
+    send_credentials = forms.BooleanField(required=False, label='Send credentials to specified e-mail')

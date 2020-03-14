@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect
 from django.views.generic import ListView, UpdateView, CreateView, DeleteView
 from .forms import PersonnelUpdateForm, PersonnelProfileUpdateForm, PersonnelCreateForm, SendCredentialsForm
 from website.messages import send_email
-from BookingApp.settings import PLATFORM_NAME
+from BookingApp.settings import PLATFORM_NAME, PLATFORM_URL
 
 
 class PersonnelList(LoginRequiredMixin, UserPassesTestMixin, ListView):
@@ -47,15 +47,19 @@ class PersonnelCreate(LoginRequiredMixin, UserPassesTestMixin, CreateView):
             profile = form2.save(commit=False)
             profile.user = form.instance
             form2.save()
-            #TODO fix send credentials feature
-            if form3.send_credentials is True:
-                details = {
-                    'recipient': user.email,
-                    'subject': f'Account was created for you at {PLATFORM_NAME}',
-                    'message': f'Hello Dear {user.first_name}!\n Please login to the system with:'
-                               f'Username {user.username} password {user.password}'
-                }
-                send_email(details)
+
+            if form3.is_valid():
+                try:
+                    if form3.cleaned_data['send_credentials'] is True:
+                        details = {
+                            'recipient': user.email,
+                            'subject': f'Account was created for you at {PLATFORM_NAME}',
+                            'message': f'Hello Dear {user.first_name}!\n Please login to the system at {PLATFORM_URL} \b'
+                                       f'Login credentials -  Username: {user.username} password: {user.password}'
+                        }
+                        send_email(details)
+                except AttributeError:
+                    pass
 
         return redirect('personnel_list')
 
