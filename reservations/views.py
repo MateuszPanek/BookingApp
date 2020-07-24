@@ -11,8 +11,9 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.forms.widgets import CheckboxSelectMultiple, SelectDateWidget
 from django.forms.models import modelform_factory
-from .forms import ServiceSelection, PersonSelection, ReservationServiceSelection, ReservationPersonSelection,\
-    ReservationCreate, ReservationDateSelection, ClientSelectionForm, ServiceSelectionForm, StaffReservationPersonSelection
+from .forms import ServiceSelection, ReservationPersonSelection, ReservationCreate, \
+    ReservationDateSelection, ClientSelectionForm, ServiceSelectionForm, \
+    StaffReservationPersonSelection
 import json
 from website.models import Service
 from personnel.models import PersonnelProfile, ClientProfile
@@ -184,20 +185,10 @@ class MonthlyScheduleDelete(LoginRequiredMixin, UserPassesTestMixin, DeleteView)
 
     def success_url_getter(self, request, *args, **kwargs):
         monthly_schedule = MonthlySchedule.objects.get(id=self.kwargs['pk'])
-        print(monthly_schedule.user_id)
         return f'/reservations/monthly_schedule/{monthly_schedule.user_id}'
-
-    # def get(self, request, *args, **kwargs):
-    #     print(self.request.GET)
-    #     print(self.request)
-    #     print(self.kwargs)
-    #     return super().get(self, request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         MonthlyScheduleDelete.success_url = self.success_url_getter(request, *args, **kwargs)
-        print(self.request)
-        print(self.kwargs)
-        print(self.request.POST)
         return super().post(self, request, *args, **kwargs)
 
     def test_func(self):
@@ -274,19 +265,6 @@ class ReservationList(LoginRequiredMixin, ListView):
             return super().get_queryset()
         return queryset
 
-    # def get_context_data(self, **kwargs):
-    #     if not self.request.user.is_staff:
-    #         reservations = Reservation.objects.filter(client=self.request.user.clientprofile)
-    #     elif self.request.user.is_staff and not self.request.user.is_superuser:
-    #         reservations = Reservation.objects.filter(user=self.request.user.personnelprofile)
-    #     elif self.request.user.is_superuser:
-    #         return super().get_context_data()
-    #     return super().get_context_data(object_list=reservations)
-    # # @TODO chekc why ordering is not working when data is filtered
-    # def get(self, request, *args, **kwargs):
-    #     context = self.get_context_data(**kwargs)
-    #     return super().get(self, request, context=context, *args, **kwargs)
-
 
 class ReservationUpdate(LoginRequiredMixin, UserPassesTestMixin, ModelFormWidgetMixin, UpdateView):
     model = Reservation
@@ -348,7 +326,6 @@ class StaffReservationCreate(LoginRequiredMixin, UserPassesTestMixin, ModelFormW
             return render(request, 'reservations/reservation_date_selection.html', context)
 
         if 'date_selection' in self.request.POST:
-            # client_name = self.request.POST['client'].split()
             client = ClientProfile.objects.get(id=self.request.POST['client'])
             if date_form_handler(self.request.POST, client):
                 return redirect(StaffReservationCreate.success_url)
@@ -462,9 +439,6 @@ class ReservationDeleteView(LoginRequiredMixin, DeleteView):
 
     def get(self, request, pk):
         reservation = Reservation.objects.get(id=pk)
-        print(f'Reservation user.id : {reservation.user.user_id}'
-              f'Reservation client.id :{reservation.client.user_id}'
-              f'Request user.id : {request.user.id}')
         if not self.request.user.is_staff:
             if reservation.client.user_id == self.request.user.id:
                 return super().get(self, request, pk)
