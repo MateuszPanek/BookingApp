@@ -1,0 +1,21 @@
+{% extends "website/home.html" %}
+{% block content %}
+        <article class="media content-section">
+            <img class="rounded-circle article-img" src="{{ object.user.image.url }}">
+            <div class="media-body">
+                <div class="article-metadata">
+                    <a class="mr-2" href="#">{{ object.user.user.first_name }} {{ object.user.user.last_name }}</a>
+                    <a class="mr-2">{{ object.user.schedule.start_hour }} - {{ object.user.schedule.end_hour }}</a>
+
+                    <small class="text-muted"></small>
+                </div>
+                <p class="article-content">{% for day in object.availability_days.all  %} {{ day }} {% endfor %}</p>
+            </div>
+        </article>
+
+    {% if request.user.is_superuser %}
+        <a href="{% url 'schedule_update' object.id %}" class="btn btn-outline-info">Edit Schedule</a>
+    {% endif %}
+     <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+
+{% endblock content %}

@@ -13,11 +13,17 @@
                     <small class="text-muted">{{ object.birth_date|date:'d M Y' }}</small>
                 </div>
                 <p class="article-content">{{ object.user.email }}</p>
+                {% if object.monthlyschedule_set %}
+                    <a href="{% url 'monthly_schedule' object.id %}" class="btn btn-outline-info">Monthly schedule</a>
+                {% endif %}
+                {% if object.schedule %}
+                <a href="{% url 'schedule'  object.id %}" class="btn btn-outline-info">Schedule</a>
+                {% endif %}
             </div>
         </article>
     {% endfor %}
     {% if request.user.is_superuser %}
         <a href="{% url 'personnel_create' %}" class="btn btn-outline-info">Create Personnel Profile</a>
+        <a href="{% url 'schedule_create' %}" class="btn btn-outline-info">Create Personnel Schedule</a>
     {% endif %}
-     <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
 {% endblock content %}

@@ -48,7 +48,7 @@
             {% if messages %}
                 {% for message in messages %}
                     <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
+                        {{ message.content }}
                     </div>
                 {% endfor %}
             {% endif %}
@@ -58,7 +58,7 @@
             <div class="col-md-4">
                 <div class="content-section">
                     <h3>Our Sidebar</h3>
-                    <p class='text-muted'>You can put any information here you'd like.
+                    <p class='text-muted'>Please sign in to access this content.
                     <ul class="list-group">
                         <li class="list-group-item list-group-item-light">Latest Posts</li>
                         <li class="list-group-item list-group-item-light">Announcements</li>
@@ -71,13 +71,13 @@
         {% elif user.is_authenticated and not user.is_staff %}
             <div class="col-md-4">
                 <div class="content-section">
-                    <h3>Our Sidebar</h3>
-                    <p class='text-muted'>You can put any information here you'd like.
+                    <h3>Side menu</h3>
+                    <p class='text-muted'>Welcome to BookingApp!
                     <ul class="list-group">
-                        <li class="list-group-item list-group-item-light">Latest Posts</li>
-                        <li class="list-group-item list-group-item-light">Announcements</li>
-                        <li class="list-group-item list-group-item-light">Calendars</li>
-                        <li class="list-group-item list-group-item-light">etc</li>
+                        <li class="list-group-item list-group-item-light"><a href="{% url 'reservations' %}">Your reservations</a></li>
+                        <li class="list-group-item list-group-item-light"><a href="{% url 'reservation_create' %}">Add reservation</a></li>
+{#                        <li class="list-group-item list-group-item-light"><a href="{% url 'reservations' %}">Your reservations</a></li>#}
+{#                        <li class="list-group-item list-group-item-light">etc</li>#}
                     </ul>
                     </p>
                 </div>
@@ -100,13 +100,14 @@
             <div class="content-section">
                 <h3>Administration</h3>
                 <p class='text-muted'>Welcome to your administration panel.
-                <ul class="list-group">
+                  <ul class="list-group">
                     <li class="list-group-item list-group-item-light"><a href="{% url 'post-create' %}">New Post</a></li>
                     <li class="list-group-item list-group-item-light"><a href="{% url 'personnel_list' %}">Personnel</a></li>
                     <li class="list-group-item list-group-item-light"><a href="{% url 'clients_list' %}">Clients</a></li>
-                    <li class="list-group-item list-group-item-light">Calendars</li>
-                    <li class="list-group-item list-group-item-light">etc</li>
-                </ul>
+                    <li class="list-group-item list-group-item-light"><a href="{% url 'reservations' %}">Reservations</a></li>
+                    <li class="list-group-item list-group-item-light"><a href="{% url 'staff_reservation_create' %}">Add reservation</a></li>
+                    <li class="list-group-item list-group-item-light"><a href="{% url 'workdays' %}">Work days</a></li>
+                  </ul>
                 </p>
             </div>
         {% endif %}

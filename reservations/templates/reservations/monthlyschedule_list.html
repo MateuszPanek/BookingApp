@@ -1,0 +1,54 @@
+{% extends "website/home.html" %}
+{% block content %}
+{% if messages %}
+    <ul class="messages">
+    {% for message in messages %}
+
+      <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
+    </ul>
+{% endif %}
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      {% if user.is_superuser %}
+       <th scope="col">Staff</th>
+      {% endif %}
+      <th scope="col">Year</th>
+      <th scope="col">Month</th>
+      <th scope="col">Edit Schedule</th>
+      {% if user.is_superuser %}
+        <th scope="col">Delete</th>
+      {% endif %}
+    </tr>
+  </thead>
+ <tbody>
+
+{% for object in objects %}
+    <tr>
+        {% if user.is_superuser %}
+            <td>{{ object.user }}</td>
+        {% endif %}
+      <td>{{ object.year }}</td>
+      <td>{{ object.month }}</td>
+      <td><a href="{% url 'daily_schedule' object.id %}">Edit</a></td>
+      {% if user.is_superuser %}
+          <td><a href="{% url 'monthly_schedule_delete' object.id %}">Delete</a></td>
+      {% endif %}
+    </tr>
+
+{% endfor %}
+</tbody>
+</table>
+<div class="form-group">
+{% if user_id %}
+  <input type="button" value="Add" class="btn btn-outline-info" onclick="location.href='{% url 'monthly_schedule_create' user_id %}'">
+{% else %}
+    <input type="button" value="Add" class="btn btn-outline-info" onclick="location.href='{% url 'monthly_schedule_create' %}'">
+{% endif %}
+  <input type="button" value="Go back" class="btn btn-outline-info" onclick="location.href='{% url 'personnel_list' %}'">
+</div>
+
+{% include "website/_pagination.html" %}
+{% endblock content %}

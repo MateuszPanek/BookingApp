@@ -1,7 +1,6 @@
 from .models import PersonnelProfile
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User
-from django.forms.widgets import CheckboxInput
 from django.shortcuts import render, redirect
 from django.views.generic import ListView, UpdateView, CreateView, DeleteView
 from .forms import PersonnelUpdateForm, PersonnelProfileUpdateForm, PersonnelCreateForm, SendCredentialsForm

@@ -1,0 +1,52 @@
+{% extends "website/home.html" %}
+{% block content %}
+
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+{#      <th scope="col">#</th>#}
+      {% if user.is_superuser %}
+        <th scope="col">Staff</th>
+      {% endif %}
+      <th scope="col">Month</th>
+      <th scope="col">Date</th>
+      <th scope="col">Start Time</th>
+      <th scope="col">End Time</th>
+      <th scope="col">Break Start</th>
+      <th scope="col">Break End</th>
+    </tr>
+  </thead>
+ <tbody>
+
+{% for object in objects %}
+    <tr>
+        {% if user.is_superuser %}
+          {% ifchanged object.month.user %}
+            <td>{{ object.month.user.user.get_full_name }}</td>
+          {% else  %}
+            <td></td>
+          {% endifchanged %}
+        {% endif %}
+        {% ifchanged object.month %}
+          <td>{{ object.month }}</td>
+        {% else  %}
+          <td></td>
+        {% endifchanged %}
+      <td>{{ object.day }}</td>
+      <td>{{ object.start_time}}</td>
+      <td>{{ object.end_time }} min</td>
+      <td>{{ object.break_start }}</td>
+      <td>{{ object.break_end }}</td>
+    </tr>
+
+{% endfor %}
+</tbody>
+</table>
+
+<div class="form-group">
+  <input type="button" value="Add" class="btn btn-outline-info" onclick="location.href='{% url 'daily_schedule_create' view.kwargs.pk %}'">
+  <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+</div>
+{% include "website/_pagination.html" %}
+{% endblock content %}

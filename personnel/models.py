@@ -1,8 +1,8 @@
 from PIL import Image
 from django.contrib.auth.models import User
 from django.db import models
-
 from website.models import Service
+from clients.models import ClientProfile
 
 
 class PersonnelProfile(models.Model):
@@ -23,3 +23,5 @@ class PersonnelProfile(models.Model):
             output_size = (300, 300)
             img.thumbnail(output_size)
             img.save(self.image.path)
+
+

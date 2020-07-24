@@ -1,0 +1,52 @@
+{% extends 'website/home.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+    <div class="content-section">
+        <div class="media">
+            <img class="rounded-circle account-img" src="/media/profile_pics/default.jpg">
+            <div class="media-body">
+                <h2 class="account-heading">Select a person</h2>
+            </div>
+        </div>
+    </div>
+    <div class="content-section">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+                <fieldset disabled>
+                    <fieldset class="form-group">
+                        <div class="form-group">
+                            {% if user.is_staff %}
+                            <label for="disabledSelect">Select a client*</label>
+                             <select id="disabledSelect" class="form-control">
+                                 <option>{{ client }}</option>
+                            </select>
+                            {% endif %}
+                            <label for="disabledSelect">Select a service*</label>
+                             <select id="disabledSelect" class="form-control">
+                                 <option>{{ service }}</option>
+                            </select>
+                        </div>
+                    </fieldset>
+                </fieldset>
+                {% if user.is_staff %}
+                {{ client_form|crispy }}
+                {% endif %}
+                {{ service_form|crispy }}
+                {{ person_form|crispy }}
+
+                <script src="/reservations/static/scripts/dynamic_values.js">
+
+                    let availability = {{ availability }};
+
+                    let monthId = $(this).val();
+                    let days = dayChoices(availability, monthId);
+
+                </script>
+                <div class="form-group">
+                <button class="btn btn-outline-info" type="submit" name="person_selection">Update</button>
+                <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+                </div>
+        </form>
+    </div>
+
+{% endblock %}

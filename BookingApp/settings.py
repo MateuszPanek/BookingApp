@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'clients.apps.ClientsConfig',
     'personnel.apps.PersonnelConfig',
     'blog.apps.BlogConfig',
+    'reservations.apps.ReservationsConfig',
     'crispy_forms',
     'django.contrib.admin',
     'django.contrib.auth',

@@ -1,0 +1,54 @@
+{% extends "website/home.html" %}
+{% block content %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th scope="col">#</th>
+      {% if user.is_superuser %}
+        <th scope="col">Staff</th>
+        <th scope="col">Client</th>
+      {% endif %}
+      {% if user.is_staff and not user.is_superuser %}
+        <th scope="col">Client</th>
+      {% endif %}
+      {% if not user.is_staff %}
+        <th scope="col">Staff</th>
+      {% endif %}
+      <th scope="col">Date</th>
+      <th scope="col">Hour</th>
+      <th scope="col">Service</th>
+      <th scope="col">Duration</th>
+      <th scope="col">Price</th>
+      <th scope="col">Delete</th>
+    </tr>
+  </thead>
+ <tbody>
+
+{% for object in objects %}
+    <tr>
+      <th scope="row"><a href="{% url 'reservation_update' object.id %}" class="btn btn-secondary btn-sm">{{ object.id }}</a></th>
+        {% if user.is_staff and not user.is_superuser%}
+            <td>{{ object.client.user.get_full_name }}</td>
+        {% endif %}
+        {% if user.is_superuser %}
+            <td>{{ object.user.user.get_full_name }}</td>
+            <td>{{ object.client.user.get_full_name }}</td>
+        {% endif %}
+        {% if not user.is_staff %}
+            <td>{{ object.user.user.get_full_name }}</td>
+        {% endif %}
+      <td>{{ object.date }}</td>
+      <td>{{ object.start_time }}</td>
+      <td>{{ object.service.name }}</td>
+      <td>{{ object.service.duration }} min</td>
+      <td>{{ object.service.price }}</td>
+      <td><a href="{% url 'reservation_delete' object.id %}">X</a></td>
+    </tr>
+
+{% endfor %}
+</tbody>
+</table>
+
+
+{% include "website/_pagination.html" %}
+{% endblock content %}

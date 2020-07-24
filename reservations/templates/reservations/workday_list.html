@@ -1,0 +1,18 @@
+{% extends "website/home.html" %}
+{% block content %}
+    {% for object in objects %}
+        <div class="media-body">
+            <div class="article-metadata">
+                {% if request.user.is_superuser %}
+                <a class="mr-2" href="{% url 'workday_update' object.id %} ">{{ object }}</a>
+                {% else %}
+                <a class="mr-2">{{ object }}</a>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+    {% if request.user.is_superuser %}
+        <a href="{% url 'workday_create' %}" class="btn btn-outline-info">Add workday</a>
+    {% endif %}
+     <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+{% endblock content %}

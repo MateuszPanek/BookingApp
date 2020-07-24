@@ -12,7 +12,7 @@ class ClientProfile(models.Model):
     confirmed_token = models.CharField(max_length=1000, default=None, null=True)
 
     def __str__(self):
-        return f'Client : {self.user.first_name} {self.user.last_name}'
+        return f'{self.user.first_name} {self.user.last_name}'
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

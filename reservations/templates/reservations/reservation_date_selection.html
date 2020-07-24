@@ -1,0 +1,72 @@
+{% extends 'website/home.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+    <div class="content-section">
+        <div class="media">
+            <img class="rounded-circle account-img" src="/media/profile_pics/default.jpg">
+            <div class="media-body">
+                <h2 class="account-heading">Select a person</h2>
+            </div>
+        </div>
+    </div>
+    <div class="content-section">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+                <fieldset disabled>
+                    <fieldset class="form-group">
+                        <div class="form-group">
+                            {% if user.is_staff %}
+                                <label for="disabledSelect">Select a client*</label>
+                                <select id="disabledSelect" class="form-control">
+                                    <option>{{ client }}</option>
+                                </select>
+                            {% endif %}
+                            <label for="disabledSelect">Select a service</label>
+                             <select id="disabledSelect" class="form-control">
+                                 <option>{{ service }}</option>
+                            </select>
+                            <label for="disabledSelect">Select person</label>
+                             <select id="disabledSelect" class="form-control">
+                                 <option>{{ person }}</option>
+                            </select>
+                        </div>
+                    </fieldset>
+                </fieldset>
+                {{ date_form|crispy }}
+                <script type = "text/javascript">
+                    let availability = {{ availability|safe }};
+                    let month = document.getElementById('id_month').value;
+                    let day = document.getElementById('id_day');
+                    displayDays();
+                    displayTime();
+                    document.getElementById('id_month').addEventListener('change', displayDays);
+                    document.getElementById('id_day').addEventListener('change', displayTime);
+
+                    function displayDays(){
+                        let i = 0;
+                        let month = document.getElementById('id_month').value;
+                        let day = document.getElementById('id_day');
+                        for(let d in availability[month]) {
+                            day.options[i] = new Option(d, d)
+                            i ++
+                        }
+                    }
+                    function displayTime() {
+                        let i = 0;
+                        let month = document.getElementById('id_month').value;
+                        let day = document.getElementById('id_day').value;
+                        let time = document.getElementById('id_time');
+                        for (let d in availability[month][day.toString()]) {
+                            time.options[i] = new Option(availability[month][day.toString()][i]);
+                            i ++
+                        }
+                    }
+                </script>
+                <div class="form-group">
+                <button class="btn btn-outline-info" type="submit" name="date_selection">Save</button>
+                <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+                </div>
+        </form>
+    </div>
+
+{% endblock %}

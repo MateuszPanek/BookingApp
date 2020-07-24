@@ -1,0 +1,50 @@
+{% extends 'website/home.html' %}
+{% block content %}
+    <div class="content-section">
+
+        <form method="POST">
+            {% csrf_token %}
+            <fieldset class="form-group">
+                <legend class="border-bottom mb-4">Delete Reservation</legend>
+                <h4>Are you sure you want to delete folowwing reservation ? </h4>
+                   <table class="table table-striped">
+                      <thead>
+                        <tr>
+                          {% if user.is_staff %}
+                            <th scope="col">Staff</th>
+                            <th scope="col">Client</th>
+                          {% elif not user.is_staff %}
+                            <th scope="col">Staff</th>
+                          {% endif %}
+                          <th scope="col">Date</th>
+                          <th scope="col">Hour</th>
+                          <th scope="col">Service</th>
+                          <th scope="col">Duration</th>
+                          <th scope="col">Price</th>
+                        </tr>
+                      </thead>
+                     <tbody>
+                        <tr>
+                            {% if user.is_staff %}
+                                <td>{{ object.user.user.get_full_name }}</td>
+                                <td>{{ object.client.user.get_full_name }}</td>
+                            {% elif not user.is_staff %}
+                                <td>{{ object.user.user.get_full_name }}</td>
+                            {% endif %}
+                          <td>{{ object.date }}</td>
+                          <td>{{ object.start_time }}</td>
+                          <td>{{ object.service.name }}</td>
+                          <td>{{ object.service.duration }} min</td>
+                          <td>{{ object.service.price }}</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </fieldset>
+            <div class="form-group">
+                <button class="btn btn-outline-danger" type="submit">Delete</button>
+                <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+            </div>
+        </form>
+    </div>
+{% endblock %}
