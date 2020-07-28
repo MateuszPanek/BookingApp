@@ -14,6 +14,7 @@ urlpatterns = [
     path('monthly_schedule/delete/<int:pk>', views.MonthlyScheduleDelete.as_view(), name='monthly_schedule_delete'),
     path('daily_schedule/create/<int:pk>', views.DailyScheduleCreate.as_view(), name='daily_schedule_create'),
     path('daily_schedule/<int:pk>', views.DailyScheduleList.as_view(), name='daily_schedule'),
+    path('schedule/import', views.ScheduleImport.as_view(), name='schedule_import'),
     path('schedule/<int:pk>', views.ScheduleView.as_view(), name='schedule'),
     path('schedule/create', views.ScheduleCreateView.as_view(), name='schedule_create'),
     path('schedule/update/<int:pk>', views.ScheduleUpdate.as_view(), name='schedule_update'),

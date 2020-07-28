@@ -25,5 +25,7 @@
     {% if request.user.is_superuser %}
         <a href="{% url 'personnel_create' %}" class="btn btn-outline-info">Create Personnel Profile</a>
         <a href="{% url 'schedule_create' %}" class="btn btn-outline-info">Create Personnel Schedule</a>
+        <a href="{% url 'schedule_import' %}" class="btn btn-outline-info">Import Schedule</a>
+
     {% endif %}
 {% endblock content %}

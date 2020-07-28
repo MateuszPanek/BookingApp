@@ -40,8 +40,11 @@ class DailySchedule(models.Model):
     day = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
-    break_start = models.TimeField(blank=True)
-    break_end = models.TimeField(blank=True)
+    break_start = models.TimeField(blank=True, null=True)
+    break_end = models.TimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f'{self.day.day}/{self.month.month}/{self.month.year}'
 
 
 class Reservation(models.Model):

@@ -1,0 +1,96 @@
+{% extends 'website/home.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+    {% if messages %}
+    <ul class="messages">
+    {% for message in messages %}
+      <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
+    {% endif %}
+    {% if outcome %}
+        {% if outcome.errors %}
+            <div class="alert alert-primary" role="alert">
+            Error encountered - please check :
+            {% for error in outcome.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </div>
+        {% endif %}
+          {% if outcome.error_months %}
+              <div class="alert alert-danger" role="alert">
+              Error encountered in the following month/months :
+            {% for error in outcome.error_months %}
+                <li>{{ error }}</li>
+            {% endfor %}
+              </div>
+        {% endif %}
+          {% if outcome.error_days %}
+              <div class="alert alert-danger" role="alert">
+              Error encountered in the following day/days :
+            {% for error in outcome.error_days %}
+                <li>{{ error }}</li>
+            {% endfor %}
+              </div>
+          {% endif %}
+         {% if outcome.existing_months %}
+             <div class="alert alert-warning" role="alert">
+             Following month/months already exists:
+            {% for month in outcome.existing_months %}
+                <li>{{ month }}</li>
+            {% endfor %}
+             </div>
+        {% endif %}
+          {% if outcome.existing_days %}
+               <div class="alert alert-warning" role="alert">
+               Following day/days already exists:
+            {% for day in outcome.existing_days %}
+                <li>{{ day }}</li>
+            {% endfor %}
+               </div>
+        {% endif %}
+          {% if outcome.created_months %}
+              <div class="alert alert-success" role="alert">
+              Following month/months were created:
+            {% for month in outcome.created_months %}
+                <li>{{ month }}</li>
+            {% endfor %}
+              </div>
+        {% endif %}
+          {% if outcome.created_days %}
+              <div class="alert alert-success" role="alert">
+              Following day/days were created:
+            {% for day in outcome.created_days %}
+                <li>{{ day }}</li>
+            {% endfor %}
+              </div>
+        {% endif %}
+{#        <li {% if outcome.errors %} class="error">{{ outcome.errors }}</li>{% endif %}#}
+{#        <li {% if outcome.existing_months %} class="warning" }> {% endif %}{{ outcome.existing_months }}</li>#}
+{#        <li {% if outcome.existing_days %} class="warning" }> {% endif %}{{ outcome.existing_days }}</li>#}
+{#        <li {% if outcome.error_months %} class="error" }> {% endif %}{{ outcome.error_months }}</li>#}
+{#        <li {% if outcome.error_days %} class="error" }> {% endif %}{{ outcome.error_days }}</li>#}
+{#        <li{% if outcome.created_days %} class="alert-alert-success">{% endif %} {{ outcome.created_days }}</li>#}
+{#        <li{% if outcome.created_months %} class="alert-alert-success">{% endif %} {{ outcome.created_months }}</li>#}
+    {% endif %}
+    </ul>
+    <div class="content-section">
+        <div class="media">
+            <div class="media-body">
+                <h2 class="account-heading">Create Schedule</h2>
+            </div>
+        </div>
+    </div>
+    <div class="content-section">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <fieldset class="form-group">
+                {{ form|crispy }}
+            </fieldset>
+            <div class="form-group">
+                <button class="btn btn-outline-info" type="submit">Upload</button>
+                <input type="button" value="Go back" class="btn btn-outline-info" onclick="history.back()">
+            </div>
+        </form>
+    </div>
+
+{% endblock %}

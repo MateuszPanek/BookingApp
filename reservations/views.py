@@ -6,18 +6,19 @@ from django.http import HttpResponseForbidden, HttpResponse, HttpResponseRedirec
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from .models import WorkDay, Schedule, Reservation, MonthlySchedule, DailySchedule
-from django.views.generic import ListView, CreateView, DeleteView, UpdateView, DetailView
+from django.views.generic import ListView, CreateView, DeleteView, UpdateView, DetailView, FormView
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.forms.widgets import CheckboxSelectMultiple, SelectDateWidget
 from django.forms.models import modelform_factory
-from .forms import ServiceSelection, ReservationPersonSelection, ReservationCreate, \
+from django.contrib.auth.models import User
+from .forms import DailyScheduleCreateForm, ServiceSelection, ReservationPersonSelection, ReservationCreate, \
     ReservationDateSelection, ClientSelectionForm, ServiceSelectionForm, \
-    StaffReservationPersonSelection
+    StaffReservationPersonSelection, ScheduleImportForm
 import json
 from website.models import Service
 from personnel.models import PersonnelProfile, ClientProfile
-from reservations.tools import date_form_generator, date_form_handler
+from reservations.tools import date_form_generator, date_form_handler, get_day_choices, is_day_in_schedule, schedule_import_handler
 
 
 class ModelFormWidgetMixin(object):
@@ -200,28 +201,48 @@ class MonthlyScheduleDelete(LoginRequiredMixin, UserPassesTestMixin, DeleteView)
 class DailyScheduleCreate(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
     model = DailySchedule
-    success_url = 'reservations/daily_schedule'
-
-    fields = 'day', 'start_time', 'end_time', 'break_start', 'break_end'
-    widgets = {
-        'day': SelectDateWidget,
-    }
+    success_url = 'reservations/monthly_schedule'
+    form = DailyScheduleCreateForm
+    fields = 'month', 'day', 'start_time', 'end_time', 'break_start', 'break_end'
 
     def get(self, request, *args, **kwargs):
-        return super().get(self, request, *args, **kwargs)
+        form = DailyScheduleCreateForm(get_day_choices(self.kwargs['pk'], True))
+        return render(request, 'reservations/dailyschedule_form.html', context={'form': form})
 
     def success_url_getter(self, request):
-        return f'{self.request.POST["month"][0]}'
+        return f'{self.kwargs.get("pk")}'
 
-    def form_valid(self, form, request):
-        self.object = form.save(commit=False)
-        self.object['month'] = self.kwargs['ok']
-
-        self.object.save()
-        return HttpResponseRedirect(self.success_url_getter(request))
+    def form_valid(self, form):
+        wrong_form = False
+        month = MonthlySchedule.objects.get(id=self.kwargs['pk'])
+        breaks = [self.request.POST['break_start'], self.request.POST['break_end']]
+        none_breaks = breaks.count('')
+        if is_day_in_schedule(month, self.request.POST['day']):
+            wrong_form = True
+            messages.add_message(self.request, messages.WARNING,
+                                 'Schedule for this day already exists! Please select another one', )
+        if none_breaks == 1:
+            wrong_form = True
+            messages.add_message(self.request, messages.WARNING,
+                                 'Please specify both break start and end time', )
+        if none_breaks == 0:
+            bs, be = datetime.datetime.strptime(breaks[0], '%H:%M'), datetime.datetime.strptime(breaks[1], '%H:%M')
+            if bs > be:
+                wrong_form = True
+                messages.add_message(self.request, messages.WARNING,
+                                     'Please make sure that break end time is greater than start time',)
+        if wrong_form:
+            form = DailyScheduleCreateForm(get_day_choices(self.kwargs['pk'], True))
+            return render(self.request, 'reservations/dailyschedule_form.html', context={'form': form})
+        return super().form_valid(form)
 
     def post(self, request, *args, **kwargs):
-        DailyScheduleCreate.success_url = self.success_url_getter(request)
+        query_copy = self.request.POST.copy()
+        month = MonthlySchedule.objects.get(id=self.kwargs.get('pk'))
+        query_copy['month'] = month
+        query_copy['day'] = datetime.date(int(month.year), int(month.month), int(query_copy['day'].split(' ')[0]))
+        self.request.POST = query_copy
+        DailyScheduleCreate.success_url = f'/reservations/daily_schedule/{self.success_url_getter(request)}'
         return super().post(self, request, *args, **kwargs)
 
     def test_func(self):
@@ -243,6 +264,24 @@ class DailyScheduleList(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
     def get_queryset(self, *args, **kwargs):
         return super(DailyScheduleList, self).get_queryset().filter(month=self.kwargs['pk'])
+
+    def test_func(self):
+        if self.request.user.is_staff:
+            return True
+        return False
+
+
+class ScheduleImport(LoginRequiredMixin, UserPassesTestMixin, FormView):
+    form_class = ScheduleImportForm
+    template_name = 'reservations/file_upload.html'
+    success_url = 'reservations/monthly_schedule'
+
+    def post(self, request, *args, **kwargs):
+        form = ScheduleImportForm(request.POST, request.FILES)
+        usr = self.request.POST['user'].split(' ')
+        user = User.objects.get(first_name=usr[0], last_name=usr[1]).personnelprofile
+        outcome = schedule_import_handler(self.request.FILES['file'], user)
+        return render(request, 'reservations/file_upload.html', context={'form': form, 'outcome': outcome})
 
     def test_func(self):
         if self.request.user.is_staff:
@@ -367,65 +406,79 @@ class ReservationCreate(LoginRequiredMixin, UserPassesTestMixin, ModelFormWidget
             return HttpResponse('Service incorrect', 404)
 
         if 'person_selection' in request.POST:
-            service = Service.objects.get(id=request.POST['service'])
-            usr = request.POST['user'].split()
-            client = request.user.clientprofile
-            person = PersonnelProfile.objects.get(user__first_name=usr[0], user__last_name=usr[1])
-            availability = availability_check.get_reservations_for_client(service, person, client)
-            months = [month for month in availability.keys()]
-            year_now = datetime.datetime.now().year
-            years = json.dumps({
-                months[0]: year_now,
-                months[1]: year_now if months[0] != 'December' else year_now + 1
-            })
-            months.insert(0, 'Select a month')
-            date_form = ReservationDateSelection(availability.keys(), years, data={
-                'service': service,
-                'user': person,
-                'years': years
-            })
-            context = {
-                'availability': json.dumps(availability_check.availability_time_to_string(availability)),
-                'service': service,
-                'person': person,
-                'date_form': date_form,
-            }
+            context = date_form_generator(request.POST, request.user.clientprofile)
+
+            #IMPORTANT READ BEFORE DELETING CODE BELOW!!!!!
+            # CHECK IF CLIENT RESERVATIONS ARE 100% WORKING CORRECTLY - CODE BELOW WAS REPLACED WITH DATE FORM GENERATOR FUNC
+
+
+            # service = Service.objects.get(id=request.POST['service'])
+            # usr = request.POST['user'].split()
+            # client = request.user.clientprofile
+            # person = PersonnelProfile.objects.get(user__first_name=usr[0], user__last_name=usr[1])
+            # availability = availability_check.get_reservations_for_client(service, person, client)
+            # months = [month for month in availability.keys()]
+            # year_now = datetime.datetime.now().year
+            # years = json.dumps({
+            #     months[0]: year_now,
+            #     months[1]: year_now if months[0] != 'December' else year_now + 1
+            # })
+            # months.insert(0, 'Select a month')
+            # date_form = ReservationDateSelection(availability.keys(), years, data={
+            #     'service': service,
+            #     'user': person,
+            #     'years': years
+            # })
+            # context = {
+            #     'availability': json.dumps(availability_check.availability_time_to_string(availability)),
+            #     'service': service,
+            #     'person': person,
+            #     'date_form': date_form,
+            # }
 
             return render(request, 'reservations/reservation_date_selection.html', context)
 
         if 'date_selection' in request.POST:
-            years = json.loads(request.POST['years'])
-            date_time = datetime.datetime(
-                year=years[request.POST['month']],
-                month=get_month_number(request.POST['month']),
-                day=int(request.POST['day']),
-                hour=int(request.POST['time'].split(':')[0]),
-                minute=int(request.POST['time'].split(':')[1])
-            )
-            user = PersonnelProfile.objects.get(id=int(request.POST['user']))
-            service = Service.objects.get(id=int(request.POST['service']))
-            client = request.user.clientprofile
-            confirmed = availability_check.check_if_any_collisions(
-                int(request.POST['user']),
-                int(request.POST['service']),
-                date_time
-            )
-            if confirmed is False and type(confirmed) == bool:
-                return HttpResponse(403, 'Sorry - you already have reservation by this time')
+            if date_form_handler(request.POST, request.user.clientprofile):
+                return redirect(ReservationCreate.success_url)
+            #IMPORTANT - READ BEFORE DELETING !
 
-            elif type(confirmed) == dict:
-                if False in confirmed.values():
-                    return HttpResponse(403, 'Sorry - you already have reservation by this time!')
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # Below code is replaced with date form handler function, please verify that it's suitable for this view
+            #as here we are dealing with reservation done by client!
 
-            reservation = Reservation.objects.create(
-                user=user,
-                service=service,
-                client=client,
-                date=date_time.date(),
-                start_time=date_time.time()
-            )
-
-            return redirect(ReservationCreate.success_url)
+            # years = json.loads(request.POST['years'])
+            # date_time = datetime.datetime(
+            #     year=years[request.POST['month']],
+            #     month=get_month_number(request.POST['month']),
+            #     day=int(request.POST['day']),
+            #     hour=int(request.POST['time'].split(':')[0]),
+            #     minute=int(request.POST['time'].split(':')[1])
+            # )
+            # user = PersonnelProfile.objects.get(id=int(request.POST['user']))
+            # service = Service.objects.get(id=int(request.POST['service']))
+            # client = request.user.clientprofile
+            # confirmed = availability_check.check_if_any_collisions(
+            #     int(request.POST['user']),
+            #     int(request.POST['service']),
+            #     date_time
+            # )
+            # if confirmed is False and type(confirmed) == bool:
+            #     return HttpResponse(403, 'Sorry - you already have reservation by this time')
+            #
+            # elif type(confirmed) == dict:
+            #     if False in confirmed.values():
+            #         return HttpResponse(403, 'Sorry - you already have reservation by this time!')
+            #
+            # reservation = Reservation.objects.create(
+            #     user=user,
+            #     service=service,
+            #     client=client,
+            #     date=date_time.date(),
+            #     start_time=date_time.time()
+            # )
+            #
+            # return redirect(ReservationCreate.success_url)
 
     def test_func(self):
         if not self.request.user.is_staff:

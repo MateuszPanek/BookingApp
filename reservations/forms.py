@@ -5,7 +5,18 @@ from personnel.models import PersonnelProfile, ClientProfile
 from django.contrib.auth.models import User
 
 
-class DailyScheduleCreate(forms.ModelForm):
+class ScheduleImportForm(forms.Form):
+    user = forms.ChoiceField(choices=[(name, name) for name in PersonnelProfile.objects.all()])
+    file = forms.FileField()
+
+class DailyScheduleCreateForm(forms.ModelForm):
+    def __init__(self, day_choices, *args, **kwargs):
+        super(DailyScheduleCreateForm, self).__init__(*args, **kwargs)
+        self.fields['day'] = forms.ChoiceField(
+            choices=tuple([(name, name) for name in day_choices]),
+            label='Day'
+        )
+
     class Meta:
         model = DailySchedule
         fields = (
@@ -14,7 +25,8 @@ class DailyScheduleCreate(forms.ModelForm):
                 'break_start', 'break_end'
                   )
         widgets = {
-            'day': forms.SelectDateWidget
+            # 'day': forms.SelectDateWidget(),
+            'month': forms.HiddenInput()
         }
 
 
@@ -101,12 +113,11 @@ class ReservationDateSelection(forms.ModelForm):
 
     class Meta:
         model = Reservation
-        fields = 'client', 'service', 'user', 'month', 'day', 'time', 'years' #added client for staff reservation
+        fields = 'client', 'service', 'user', 'month', 'day', 'time', 'years'
         widgets = {
-            'client': forms.HiddenInput(), #check if it doesn't break client reservations
+            'client': forms.HiddenInput(),
             'service': forms.HiddenInput(),
             'user': forms.HiddenInput(),
-            # 'years': forms.HiddenInput()
         }
 
 
@@ -127,10 +138,6 @@ class ClientSelectionForm(forms.ModelForm):
     class Meta:
         model = Reservation
         fields = 'client',
-        # widgets = {
-        #     'service': forms.HiddenInput()
-        # }
-        #
 
 
 class ServiceSelectionForm(forms.ModelForm):
