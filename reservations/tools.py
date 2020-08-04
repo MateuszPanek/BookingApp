@@ -8,6 +8,9 @@ import json
 from .forms import ReservationDateSelection
 from django.http import HttpResponse
 import pandas as pd
+import datetime as dt
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 
 def date_form_generator(request, client):
@@ -52,7 +55,7 @@ def date_form_handler(request, client: object):
     Checks if specified client has reservation at the same time
     :param request: request.POST
     :param client: Client user object
-    :return: True if reservation does not exist, HttpResponseRedirect otherwise
+    :return: True if reservation is created, HttpResponseRedirect otherwise
     """
     years = json.loads(request['years'])
     date_time = datetime.datetime(
@@ -131,18 +134,19 @@ def get_day_choices(pk: str, collision_check=False) -> list:
     return day_choices
 
 
-def times_valid(times: list, val=pd.NaT, null: bool = True) -> bool:
+def times_valid(times: list, val=pd.NaT, null: bool = True, types: list = False) -> bool:
     """
     Checks if given times from 2 elements list are valid - start time is not smaller than end time,
     if both are filled / not filled depending on null parameter
     :param times: 2 element list with start and end time for comparison
     :param val: expected empty value, pd.NaT by default
     :param null: default True - accepts situation in which both of the times are empty val,
+    :param types: list of accepted time objects, if False, function will assume default as pd.Timestamp
     otherwise both times need to be filled in
     :return: bool True if times are valid, otherwise False
     """
     nat = times.count(val)
-    types = [datetime.datetime, pd._libs.tslibs.timestamps.Timestamp]
+    types = [dt.time, str] if not types else types
     if nat == 1:
         return False
     if nat == 0:
@@ -157,71 +161,181 @@ def times_valid(times: list, val=pd.NaT, null: bool = True) -> bool:
     return True
 
 
-def schedule_creator(user, years, months, days, start_time, end_time, break_start, break_end):
+def breaks_valid(times: list) -> bool:
+    """
+    Checks if breaks are within day start and end time
+    :param times: list of time - start time, end time, break start, break end
+    :return: True if breaks are valid else False
+    """
+    return times[0] < times[2] < times[3] < times[1]
+
+
+def unique_months(user: list, years: list, months: list) -> set:
+    months_list = [(user[i], years[i], months[i]) for i in range(len(years))]
+    return set(months_list)
+
+
+def schedule_creator(user: list, years: list, months: list, days: list,
+                     start_time: list, end_time: list, break_start: list,
+                     break_end: list, update: bool) -> dict:
+    """
+    Creates / Updates schedule objects (MonthlySchedule, DailySchedule) from given lists
+    :param user: user object list
+    :param years: list with years (string format)
+    :param months: list with months (string format)
+    :param days: list with days (str format)
+    :param start_time: list with days start time : datetime.time format
+    :param end_time: list with days end time : datetime.time format
+    :param break_start: list with days break start time : datetime.time format or None
+    :param break_end: list with days break end time : datetime.time format or None
+    :param update: True for additionally checking and updating existing MonthlySchedule / Dailyschedule objects
+    :return: outcome dict with outcome of the operation
+    """
     outcome = {
         'existing_months': set(),
         'existing_days': set(),
-        'created_months': set(),
-        'created_days': set(),
+        'created_months': [],
+        'created_days': [],
         'error_months': set(),
-        'error_days': set()
+        'error_days': set(),
+        'updated_days': set()
     }
 
-    for i in range(len(years)):
+    cleaned_months = unique_months(user, years, months)
+    for item in cleaned_months:
         try:
-            date_object = datetime.date(year=int(years[i]), month=int(months[i]), day=int(days[i]))
+            date_object = datetime.date(year=int(item[1]), month=int(item[2]), day=1)
             try:
-                month = MonthlySchedule.objects.get(user=user, year=date_object.year, month=date_object.month)
-                outcome['existing_months'].add(month.__str__())
+                month = MonthlySchedule.objects.get(user=item[0], year=date_object.year, month=date_object.month)
+                if month not in outcome['existing_months']:
+                    outcome['existing_months'].add(f'{month.__str__()} {item[0]}')
             except MonthlySchedule.DoesNotExist:
-                month = MonthlySchedule.objects.create(user=user, year=date_object.year, month=date_object.month)
-                outcome['created_months'].add(month.__str__())
+                month = MonthlySchedule.objects.create(user=item[0], year=date_object.year, month=date_object.month)
+                outcome['created_months'].append(f'{month.__str__()} {item[0]}')
         except (ValueError, TypeError):
-            outcome['error_months'].add(f'{years[i]} {months[i]} {days[i]}')
+            outcome['error_months'].add(f'{item[2]}/{item[1]} {item[0]}')
 
     for i in range(len(years)):
         try:
             date_object = datetime.date(year=int(years[i]), month=int(months[i]), day=int(days[i]))
-            month = MonthlySchedule.objects.get(user=user, year=date_object.year, month=date_object.month )
+            month = MonthlySchedule.objects.get(user=user[i], year=date_object.year, month=date_object.month)
             try:
                 day = DailySchedule.objects.get(month=month, day=date_object)
-                outcome['existing_days'].add(day.__str__())
+                if update is True:
+                    if times_valid([start_time[i], end_time[i]], null=False) and \
+                            times_valid([break_start[i], break_end[i]]):
+                        break_s = break_start[i] if type(break_start[i]) not in (str, pd.NaT) else None
+                        break_e = break_end[i] if type(break_end[i]) not in (str, pd.NaT) else None
+                        valid_breaks = True
+                        if break_s and break_e:
+                            valid_breaks = breaks_valid([start_time[i], end_time[i], break_s, break_e])
+                        if any([
+                            day.start_time != start_time[i],
+                            day.end_time != end_time[i],
+                            day.break_start != break_s,
+                            day.break_end != break_e
+                        ]) and valid_breaks:
+                            day.start_time = start_time[i]
+                            day.end_time = end_time[i]
+                            day.break_start = break_s
+                            day.break_end = break_e
+                            day.save()
+                            outcome['updated_days'].add(f'{day.__str__()} {month.user.user.get_full_name()}')
+                        else:
+                            if day not in outcome['existing_days']:
+                                outcome['existing_days'].add(f'{day.__str__()} {month.user.user.get_full_name()}')
+                    else:
+                        outcome['error_days'].add(f'{days[i]}/{months[i]}/{years[i]} at row {i + 2}')
+                else:
+                    if day not in outcome['existing_days']:
+                        outcome['existing_days'].add(f'{day.__str__()} {month.user.user.get_full_name()}')
 
             except DailySchedule.DoesNotExist:
-                from django.core.exceptions import ValidationError
                 try:
-                    if times_valid([start_time[i], end_time[i]], null=False) and times_valid([break_start[i], break_end[i]]):
+                    valid_time = times_valid([start_time[i], end_time[i]], null=False)
+                    valid_break = times_valid([break_start[i], break_end[i]])
+                    if valid_time and valid_break:
                         break_s = break_start[i] if break_start[i] is not pd.NaT else None
                         break_e = break_end[i] if break_end[i] is not pd.NaT else None
-                        d = DailySchedule.objects.create(month=month, day=date_object, start_time=start_time[i],
-                                                         end_time=end_time[i], break_start=break_s, break_end=break_e)
-                        outcome['created_days'].add(d.__str__())
+                        valid_breaks = True
+                        if break_s and break_e:
+                            valid_breaks = breaks_valid([start_time[i], end_time[i], break_s, break_e])
+                        if valid_breaks:
+                            d = DailySchedule.objects.create(month=month, day=date_object,
+                                                             start_time=start_time[i], end_time=end_time[i],
+                                                             break_start=break_s, break_end=break_e)
+                            outcome['created_days'].append(f'{d.__str__()} {month.user.user.get_full_name()}')
+                        else:
+                            outcome['error_days'].add(f'{days[i]}/{months[i]}/{years[i]} at row {i + 2}')
                     else:
-                        outcome['error_days'].add(f'{days[i]}/{months[i]}/{years[i]}')
+                        outcome['error_days'].add(f'{days[i]}/{months[i]}/{years[i]} at row {i + 2}')
                 except ValidationError:
-                    outcome['error_days'].add(f'{days[i]}/{months[i]}/{years[i]}')
+                    outcome['error_days'].add(f'{days[i]}/{months[i]}/{years[i]} at row {i + 2}')
         except (ValueError, TypeError):
-            outcome['error_days'].add(f' {days[i]}/{months[i]}/{years[i]}')
+            outcome['error_days'].add(f'{days[i]}/{months[i]}/{years[i]} at row {i + 2}')
+        except ValidationError:
+            outcome['error_days'].add(f'{days[i]}/{months[i]}/{years[i]} at row {i + 2}')
     return outcome
 
 
-def schedule_import_handler(file: object, user: object):
+def user_getter(full_name: str) -> object or str:
+    """
+    Gets user profile if full_name is correct
+    :param full_name: str representing user full name
+    :return: PersonnelProfile object if operation is successful else returns input
+    """
+
+    try:
+        names = [name for name in full_name.split(' ')]
+        user = User.objects.get(first_name=names[0], last_name=names[1]).personnelprofile
+        return user
+    except (User.DoesNotExist, AttributeError):
+        return str(full_name)
+
+
+def convert_time(time: str or pd.datetime) -> pd.Timedelta or str:
+    """
+    Converts input string with time to pd.Timedelta
+    :param time: time represented as string
+    :return: dt.datetime object if operation was succesful, else input as a string
+    """
+    try:
+        if type(time) is dt.datetime:
+            return time.time()
+        elif type(pd.Timestamp):
+            return time.time()
+        elif len(time) == 5:
+            return dt.datetime.strptime(time, '%H%:M').time()
+        else:
+            return dt.datetime.strptime(time.split(' ')[1], '%H:%M:%S').time()
+    except (TypeError, AttributeError, ValueError):
+        return str(time)
+
+
+def schedule_import_handler(file: object, user: object or None, update, user_column=False):
     from xlrd import XLRDError
     try:
-        data = pd.ExcelFile(file)
         data_opened = pd.read_excel(file)
         df = pd.DataFrame(data_opened)
         years = [x for x in df['Year']]
         months = [x for x in df['Month']]
         days = [x for x in df['Day']]
-        start_time = [x for x in df['Start_time']]
-        end_time = [x for x in df['End_time']]
-        break_start = [x for x in df['Break_start']]
-        break_end = [x for x in df['Break_end']]
-        outcome = schedule_creator(user, years, months, days, start_time, end_time, break_start, break_end)
+        start_time = [convert_time(x) if type(x) is not pd.NaT else x for x in df['Start_time']]
+        end_time = [convert_time(x) if type(x) is not pd.NaT else x for x in df['End_time']]
+        break_start = [convert_time(x) if type(x) is not pd.NaT else x for x in df['Break_start']]
+        break_end = [convert_time(x) if type(x) is not pd.NaT else x for x in df['Break_end']]
+        if user_column is False:
+            user = [user for i in range(len(years))]
+        else:
+            user = [user_getter(user) for user in df['User']]
+        if any([type(usr) for usr in user]) is str:
+            outcome = {'user_error': [f'Wrong user in row{i} : {user}' for
+                                      i, usr in enumerate(user, 2) if type(user) is str]}
+            return outcome
+        outcome = schedule_creator(user, years, months, days, start_time, end_time, break_start, break_end, update)
 
     except KeyError as e:
-        outcome = {'errors': str(e)}
+        outcome = {'errors': [str(e)]}
     except XLRDError:
-        outcome = {'errors': 'Please import a valid file'}
+        outcome = {'errors': ['Please import a valid file']}
     return outcome

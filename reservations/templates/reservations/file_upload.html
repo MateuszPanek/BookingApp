@@ -9,9 +9,17 @@
     {% endif %}
     {% if outcome %}
         {% if outcome.errors %}
-            <div class="alert alert-primary" role="alert">
+            <div class="alert alert-danger" role="alert">
             Error encountered - please check :
             {% for error in outcome.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </div>
+        {% endif %}
+         {% if outcome.user_errors %}
+            <div class="alert alert-danger" role="alert">
+            User error - please check:
+            {% for error in outcome.user_errors %}
                 <li>{{ error }}</li>
             {% endfor %}
             </div>
@@ -60,6 +68,14 @@
               <div class="alert alert-success" role="alert">
               Following day/days were created:
             {% for day in outcome.created_days %}
+                <li>{{ day }}</li>
+            {% endfor %}
+              </div>
+        {% endif %}
+        {% if outcome.updated_days %}
+              <div class="alert alert-success" role="alert">
+              Following day/days were updated:
+            {% for day in outcome.updated_days %}
                 <li>{{ day }}</li>
             {% endfor %}
               </div>

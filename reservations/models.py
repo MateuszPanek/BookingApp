@@ -26,10 +26,14 @@ class Schedule(models.Model):
 
 class MonthlySchedule(models.Model):
     user = models.ForeignKey(PersonnelProfile, on_delete=models.CASCADE)
-    year_choices = [(str(datetime.date.today().year), datetime.date.today().year), (str(datetime.date.today().year + 1), datetime.date.today().year + 1)]
+    year_choices = [(str(datetime.date.today().year), datetime.date.today().year),
+                    (str(datetime.date.today().year + 1), datetime.date.today().year + 1)]
     month_choices = [(str(i), calendar.month_name[i]) for i in range(1, 13)]
     year = models.CharField(max_length=4, choices=year_choices, default='1')
     month = models.CharField(max_length=9, choices=month_choices, default='1')
+
+    def get_month_name(self):
+        return calendar.month_name[int(self.month)]
 
     def __str__(self):
         return f'{calendar.month_name[int(self.month)]} {self.year}'

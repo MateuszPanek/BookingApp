@@ -1,8 +1,5 @@
-from reservations import availability_check
-from reservations.availability_check import get_month_number
 import datetime
-from django.shortcuts import get_list_or_404, Http404
-from django.http import HttpResponseForbidden, HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from .models import WorkDay, Schedule, Reservation, MonthlySchedule, DailySchedule
@@ -12,13 +9,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.forms.widgets import CheckboxSelectMultiple, SelectDateWidget
 from django.forms.models import modelform_factory
 from django.contrib.auth.models import User
-from .forms import DailyScheduleCreateForm, ServiceSelection, ReservationPersonSelection, ReservationCreate, \
-    ReservationDateSelection, ClientSelectionForm, ServiceSelectionForm, \
+from .forms import DailyScheduleCreateForm, ServiceSelection, ReservationPersonSelection, \
+    ClientSelectionForm, ServiceSelectionForm, \
     StaffReservationPersonSelection, ScheduleImportForm
-import json
 from website.models import Service
 from personnel.models import PersonnelProfile, ClientProfile
-from reservations.tools import date_form_generator, date_form_handler, get_day_choices, is_day_in_schedule, schedule_import_handler
+from reservations.tools import date_form_generator, date_form_handler, get_day_choices, is_day_in_schedule,\
+    schedule_import_handler
 
 
 class ModelFormWidgetMixin(object):
@@ -271,16 +268,31 @@ class DailyScheduleList(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return False
 
 
-class ScheduleImport(LoginRequiredMixin, UserPassesTestMixin, FormView):
+class ScheduleImportSingleUser(LoginRequiredMixin, UserPassesTestMixin, FormView):
     form_class = ScheduleImportForm
     template_name = 'reservations/file_upload.html'
     success_url = 'reservations/monthly_schedule'
 
+    def get(self, request, *args, **kwargs):
+        personnel_profiles = [person for person in PersonnelProfile.objects.all()]
+        personnel_profiles.insert(0, 'General Update')
+        form = ScheduleImportForm(personnel_profiles=personnel_profiles)
+        return render(request, 'reservations/file_upload.html', context={'form': form})
+
     def post(self, request, *args, **kwargs):
-        form = ScheduleImportForm(request.POST, request.FILES)
-        usr = self.request.POST['user'].split(' ')
-        user = User.objects.get(first_name=usr[0], last_name=usr[1]).personnelprofile
-        outcome = schedule_import_handler(self.request.FILES['file'], user)
+        personnel_profiles = [person for person in PersonnelProfile.objects.all()]
+        personnel_profiles.insert(0, 'General Update')
+        is_user = self.request.POST.get('user')
+        if is_user != 'General Update':
+            usr = self.request.POST['user'].split(' ')
+            user = User.objects.get(first_name=usr[0], last_name=usr[1]).personnelprofile
+            user_column = False
+        else:
+            user = None
+            user_column = True
+        update = True if self.request.POST.get('update_existing_days') == 'on' else False
+        outcome = schedule_import_handler(self.request.FILES['file'], user, update, user_column)
+        form = ScheduleImportForm(personnel_profiles=personnel_profiles)
         return render(request, 'reservations/file_upload.html', context={'form': form, 'outcome': outcome})
 
     def test_func(self):
@@ -293,14 +305,14 @@ class ReservationList(LoginRequiredMixin, ListView):
     model = Reservation
     context_object_name = 'objects'
     paginate_by = 10
-    ordering = ['-id']
+    ordering = ['-date']
 
     def get_queryset(self):
         if not self.request.user.is_staff:
-            queryset = Reservation.objects.filter(client=self.request.user.clientprofile)
+            queryset = Reservation.objects.filter(client=self.request.user.clientprofile).order_by('-date')
         elif self.request.user.is_staff and not self.request.user.is_superuser:
-            queryset = Reservation.objects.filter(user=self.request.user.personnelprofile)
-        elif self.request.user.is_superuser:
+            queryset = Reservation.objects.filter(user=self.request.user.personnelprofile).order_by('-date')
+        else:
             return super().get_queryset()
         return queryset
 
@@ -323,13 +335,13 @@ class StaffReservationCreate(LoginRequiredMixin, UserPassesTestMixin, ModelFormW
     model = Reservation
     success_url = '/reservations'
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         client_list = ClientProfile.objects.all()
         client_names = [client for client in client_list]
         form = ClientSelectionForm(client_names=client_names)
         return render(self.request, 'reservations/reservation_client_selection.html', context={'form': form})
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         if 'client_selection' in self.request.POST:
             client = self.request.POST['client']
             service_form = ServiceSelectionForm()
@@ -342,7 +354,7 @@ class StaffReservationCreate(LoginRequiredMixin, UserPassesTestMixin, ModelFormW
             return render(request, 'reservations/staff_reservation_service_selection.html', context)
 
         if 'service_selection' in self.request.POST:
-            service = Service.objects.get(id = self.request.POST['service'])
+            service = Service.objects.get(id=self.request.POST['service'])
             client = self.request.POST['client']
             available_personnel = PersonnelProfile.objects.filter(services=service)
             personnel_names = [prs for prs in available_personnel]
@@ -359,9 +371,9 @@ class StaffReservationCreate(LoginRequiredMixin, UserPassesTestMixin, ModelFormW
 
         if 'person_selection' in self.request.POST:
             client_name = self.request.POST['client'].split()
-            client = ClientProfile.objects.get(user__first_name=client_name[0], user__last_name=' '.join(client_name[1:]))
+            client = ClientProfile.objects.get(user__first_name=client_name[0],
+                                               user__last_name=' '.join(client_name[1:]))
             context = date_form_generator(self.request.POST, client)
-
             return render(request, 'reservations/reservation_date_selection.html', context)
 
         if 'date_selection' in self.request.POST:
@@ -375,18 +387,15 @@ class StaffReservationCreate(LoginRequiredMixin, UserPassesTestMixin, ModelFormW
         return False
 
 
-class ReservationCreate(LoginRequiredMixin, UserPassesTestMixin, ModelFormWidgetMixin, CreateView):
+class ReservationCreateView(LoginRequiredMixin, UserPassesTestMixin, ModelFormWidgetMixin, CreateView):
     model = Reservation
     success_url = '/reservations'
 
-    @staticmethod
-    def get(request):
+    def get(self, request, *args, **kwargs):
         form = ServiceSelection()
         return render(request, 'reservations/reservation_service_selection.html', context={'form': form})
 
-    @staticmethod
-    def post(request):
-
+    def post(self, request, *args, **kwargs):
         if 'service_selection' in request.POST:
             service_form = ServiceSelection(request.POST)
             if service_form.is_valid():
@@ -399,86 +408,16 @@ class ReservationCreate(LoginRequiredMixin, UserPassesTestMixin, ModelFormWidget
                     'service': service,
                     'person_form': person_form
                 }
-                """
-                Selected service data should be saved for the 3rd stage
-                """
                 return render(request, 'reservations/reservation_person_selection.html', context)
             return HttpResponse('Service incorrect', 404)
 
         if 'person_selection' in request.POST:
             context = date_form_generator(request.POST, request.user.clientprofile)
-
-            #IMPORTANT READ BEFORE DELETING CODE BELOW!!!!!
-            # CHECK IF CLIENT RESERVATIONS ARE 100% WORKING CORRECTLY - CODE BELOW WAS REPLACED WITH DATE FORM GENERATOR FUNC
-
-
-            # service = Service.objects.get(id=request.POST['service'])
-            # usr = request.POST['user'].split()
-            # client = request.user.clientprofile
-            # person = PersonnelProfile.objects.get(user__first_name=usr[0], user__last_name=usr[1])
-            # availability = availability_check.get_reservations_for_client(service, person, client)
-            # months = [month for month in availability.keys()]
-            # year_now = datetime.datetime.now().year
-            # years = json.dumps({
-            #     months[0]: year_now,
-            #     months[1]: year_now if months[0] != 'December' else year_now + 1
-            # })
-            # months.insert(0, 'Select a month')
-            # date_form = ReservationDateSelection(availability.keys(), years, data={
-            #     'service': service,
-            #     'user': person,
-            #     'years': years
-            # })
-            # context = {
-            #     'availability': json.dumps(availability_check.availability_time_to_string(availability)),
-            #     'service': service,
-            #     'person': person,
-            #     'date_form': date_form,
-            # }
-
             return render(request, 'reservations/reservation_date_selection.html', context)
 
         if 'date_selection' in request.POST:
             if date_form_handler(request.POST, request.user.clientprofile):
-                return redirect(ReservationCreate.success_url)
-            #IMPORTANT - READ BEFORE DELETING !
-
-            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            # Below code is replaced with date form handler function, please verify that it's suitable for this view
-            #as here we are dealing with reservation done by client!
-
-            # years = json.loads(request.POST['years'])
-            # date_time = datetime.datetime(
-            #     year=years[request.POST['month']],
-            #     month=get_month_number(request.POST['month']),
-            #     day=int(request.POST['day']),
-            #     hour=int(request.POST['time'].split(':')[0]),
-            #     minute=int(request.POST['time'].split(':')[1])
-            # )
-            # user = PersonnelProfile.objects.get(id=int(request.POST['user']))
-            # service = Service.objects.get(id=int(request.POST['service']))
-            # client = request.user.clientprofile
-            # confirmed = availability_check.check_if_any_collisions(
-            #     int(request.POST['user']),
-            #     int(request.POST['service']),
-            #     date_time
-            # )
-            # if confirmed is False and type(confirmed) == bool:
-            #     return HttpResponse(403, 'Sorry - you already have reservation by this time')
-            #
-            # elif type(confirmed) == dict:
-            #     if False in confirmed.values():
-            #         return HttpResponse(403, 'Sorry - you already have reservation by this time!')
-            #
-            # reservation = Reservation.objects.create(
-            #     user=user,
-            #     service=service,
-            #     client=client,
-            #     date=date_time.date(),
-            #     start_time=date_time.time()
-            # )
-            #
-            # return redirect(ReservationCreate.success_url)
+                return redirect(ReservationCreateView.success_url)
 
     def test_func(self):
         if not self.request.user.is_staff:
@@ -490,7 +429,8 @@ class ReservationDeleteView(LoginRequiredMixin, DeleteView):
     model = Reservation
     success_url = '/reservations'
 
-    def get(self, request, pk):
+    def get(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
         reservation = Reservation.objects.get(id=pk)
         if not self.request.user.is_staff:
             if reservation.client.user_id == self.request.user.id:
@@ -504,7 +444,3 @@ class ReservationDeleteView(LoginRequiredMixin, DeleteView):
                 return HttpResponseForbidden()
         else:
             return super().get(self, request, pk)
-
-
-
-

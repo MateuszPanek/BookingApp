@@ -1,13 +1,21 @@
 from django import forms
-from .models import Reservation, MonthlySchedule, DailySchedule
+from .models import Reservation, DailySchedule
 from website.models import Service
-from personnel.models import PersonnelProfile, ClientProfile
-from django.contrib.auth.models import User
+from personnel.models import PersonnelProfile
 
 
 class ScheduleImportForm(forms.Form):
     user = forms.ChoiceField(choices=[(name, name) for name in PersonnelProfile.objects.all()])
     file = forms.FileField()
+    update_existing_days = forms.BooleanField(required=False)
+
+    def __init__(self, personnel_profiles, *args, **kwargs):
+        super(ScheduleImportForm, self).__init__(*args, **kwargs)
+        self.fields['user'] = forms.ChoiceField(
+            choices=tuple([(name, name) for name in personnel_profiles]),
+            label='User'
+            )
+
 
 class DailyScheduleCreateForm(forms.ModelForm):
     def __init__(self, day_choices, *args, **kwargs):

@@ -34,18 +34,20 @@
                 </fieldset>
                 {{ date_form|crispy }}
                 <script type = "text/javascript">
-                    let availability = {{ availability|safe }};
-                    let month = document.getElementById('id_month').value;
-                    let day = document.getElementById('id_day');
+                     let availability = {{ availability|safe }};
                     displayDays();
                     displayTime();
                     document.getElementById('id_month').addEventListener('change', displayDays);
+                    document.getElementById('id_month').addEventListener('change', displayTime);
                     document.getElementById('id_day').addEventListener('change', displayTime);
 
                     function displayDays(){
                         let i = 0;
                         let month = document.getElementById('id_month').value;
                         let day = document.getElementById('id_day');
+                        for (a in day.options) {
+                            day.options[a] = null;
+                        }
                         for(let d in availability[month]) {
                             day.options[i] = new Option(d, d)
                             i ++
@@ -56,10 +58,13 @@
                         let month = document.getElementById('id_month').value;
                         let day = document.getElementById('id_day').value;
                         let time = document.getElementById('id_time');
-                        for (let d in availability[month][day.toString()]) {
-                            time.options[i] = new Option(availability[month][day.toString()][i]);
-                            i ++
+                        for (t in time.options) {
+                            time.options[t] = null;
                         }
+                        for (i; i < availability[month][day].length; i++) {
+                            time.options[i] = new Option(availability[month][day][i]);
+                        console.log(time.options)
+                        console.log('aaa')
                     }
                 </script>
                 <div class="form-group">
