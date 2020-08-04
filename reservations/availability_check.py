@@ -203,7 +203,9 @@ def check_if_time_in_range(day: DailySchedule, service: Service, hour: int, minu
     """
 
     day_breaks = False if None in [day.break_start, day.break_end] else True
-    #MODIFICATION TO THE EQUALITY FOR BETTER TIME MANAGEMENT?
+    #MODIFICATION TO THE EQUALITY FOR BETTER TIME MANAGEMENT Previous code wasn't allowing situations in which
+    # reservation start time will be the same as previous reservation end time / now it's ok but
+    # et's keep this code in case issues will be encountered
     # if day_breaks:
     #     return day.start_time <= datetime.time(hour, minute) <= datetime.time(
     #         hour=(day.break_start.hour * 60 + day.break_start.minute - service.duration) // 60,
