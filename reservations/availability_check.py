@@ -203,40 +203,27 @@ def check_if_time_in_range(day: DailySchedule, service: Service, hour: int, minu
     """
 
     day_breaks = False if None in [day.break_start, day.break_end] else True
-    #MODIFICATION TO THE EQUALITY FOR BETTER TIME MANAGEMENT Previous code wasn't allowing situations in which
-    # reservation start time will be the same as previous reservation end time / now it's ok but
-    # et's keep this code in case issues will be encountered
-    # if day_breaks:
-    #     return day.start_time <= datetime.time(hour, minute) <= datetime.time(
-    #         hour=(day.break_start.hour * 60 + day.break_start.minute - service.duration) // 60,
-    #         minute=(day.break_start.hour * 60 + day.break_start.minute - service.duration) % 60
-    #         ) or day.break_end <= datetime.time(hour, minute) <= datetime.time(
-    #             hour=(day.end_time.hour * 60 + day.end_time.minute - service.duration) // 60,
-    #             minute=(day.end_time.hour * 60 + day.end_time.minute - service.duration) % 60)
-    #
-    # else:
-    #     return day.start_time <= datetime.time(hour, minute) <= datetime.time(
-    #         hour=(day.end_time.hour * 60 + day.end_time.minute - service.duration) // 60,
-    #         minute=(day.end_time.hour * 60 + day.end_time.minute - service.duration) % 60)
     if day_breaks:
-        return day.start_time <= datetime.time(hour, minute) < datetime.time(
+        return day.start_time <= datetime.time(hour, minute) <= datetime.time(
             hour=(day.break_start.hour * 60 + day.break_start.minute - service.duration) // 60,
             minute=(day.break_start.hour * 60 + day.break_start.minute - service.duration) % 60
-            ) or day.break_end < datetime.time(hour, minute) <= datetime.time(
+            ) or day.break_end <= datetime.time(hour, minute) <= datetime.time(
                 hour=(day.end_time.hour * 60 + day.end_time.minute - service.duration) // 60,
                 minute=(day.end_time.hour * 60 + day.end_time.minute - service.duration) % 60)
 
     else:
-        return day.start_time <= datetime.time(hour, minute) < datetime.time(
+        return day.start_time <= datetime.time(hour, minute) <= datetime.time(
             hour=(day.end_time.hour * 60 + day.end_time.minute - service.duration) // 60,
             minute=(day.end_time.hour * 60 + day.end_time.minute - service.duration) % 60)
 
+
 def get_availability(service, person) -> List[Union[Dict[Any, dict], bool]]:
     """
-
-    :param service:
-    :param person:
-    :return:
+    Checks availability of specified User based on seleced Service
+    :param service: Service object
+    :param person: PersonnelProfile object
+    :return: dictionary with months, each containing dictionaries of days - each day's value is a list of datetime.time
+    objects
     """
     availability = {}
     availability_with_day_objects = {}

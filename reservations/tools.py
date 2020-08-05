@@ -2,18 +2,19 @@ import calendar
 from website.models import Service
 from personnel.models import PersonnelProfile
 from reservations.models import Reservation, MonthlySchedule, DailySchedule
+from clients.models import ClientProfile
 from reservations import availability_check
 import datetime
 import json
 from .forms import ReservationDateSelection
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 import pandas as pd
 import datetime as dt
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
 
-def date_form_generator(request, client):
+def date_form_generator(request: dict, client: ClientProfile) -> dict:
     """
     Function that helps to generate date selection form for different versions of Create Service Form
     (different version for client users and staff users)
@@ -50,7 +51,7 @@ def date_form_generator(request, client):
     return context
 
 
-def date_form_handler(request, client: object):
+def date_form_handler(request: dict, client: ClientProfile) -> bool or HttpResponseRedirect:
     """
     Checks if specified client has reservation at the same time
     :param request: request.POST
@@ -104,7 +105,7 @@ def is_day_in_schedule(month: object, day: datetime.date) -> bool:
         return False
 
 
-def check_exsting_days_schedule(month: object) -> list:
+def check_existing_days_schedule(month: object) -> list:
     """
     Returns list of existing days in schedule for given MonthlySchedule object
     :param month: MonthlySchedule object
@@ -126,7 +127,7 @@ def get_day_choices(pk: str, collision_check=False) -> list:
     year = int(month_object.year)
     month = int(month_object.month)
     days_range = calendar.monthrange(year, month)[1] + 1
-    existing_schedule_days = check_exsting_days_schedule(month_object) if collision_check is True else []
+    existing_schedule_days = check_existing_days_schedule(month_object) if collision_check is True else []
     day_choices = [
         f'{day} : {datetime.datetime(year, month, day).strftime("%A")}' for day in range(1, days_range)
         if datetime.date(year, month, day) not in existing_schedule_days
@@ -145,7 +146,11 @@ def times_valid(times: list, val=pd.NaT, null: bool = True, types: list = False)
     otherwise both times need to be filled in
     :return: bool True if times are valid, otherwise False
     """
+
     nat = times.count(val)
+    for value in times:
+        if type(value) is str:
+            nat += 1
     types = [dt.time, str] if not types else types
     if nat == 1:
         return False
@@ -171,6 +176,13 @@ def breaks_valid(times: list) -> bool:
 
 
 def unique_months(user: list, years: list, months: list) -> set:
+    """
+    Generates list of tuples - each tuple contains user full name, year and month
+    :param user: list of users (full names)
+    :param years: list of years
+    :param months: list of months
+    :return: set of unique tuples
+    """
     months_list = [(user[i], years[i], months[i]) for i in range(len(years))]
     return set(months_list)
 
@@ -189,7 +201,8 @@ def schedule_creator(user: list, years: list, months: list, days: list,
     :param break_start: list with days break start time : datetime.time format or None
     :param break_end: list with days break end time : datetime.time format or None
     :param update: True for additionally checking and updating existing MonthlySchedule / Dailyschedule objects
-    :return: outcome dict with outcome of the operation
+    :return: outcome dict with outcome of the operation (dictionary contains information about succesful creation or
+    update, existing objects or errors
     """
     outcome = {
         'existing_months': set(),
@@ -224,8 +237,8 @@ def schedule_creator(user: list, years: list, months: list, days: list,
                 if update is True:
                     if times_valid([start_time[i], end_time[i]], null=False) and \
                             times_valid([break_start[i], break_end[i]]):
-                        break_s = break_start[i] if type(break_start[i]) not in (str, pd.NaT) else None
-                        break_e = break_end[i] if type(break_end[i]) not in (str, pd.NaT) else None
+                        break_s = break_start[i] if type(break_start[i]) not in (str, pd.NaT, None) else None
+                        break_e = break_end[i] if type(break_end[i]) not in (str, pd.NaT, None) else None
                         valid_breaks = True
                         if break_s and break_e:
                             valid_breaks = breaks_valid([start_time[i], end_time[i], break_s, break_e])
@@ -255,8 +268,8 @@ def schedule_creator(user: list, years: list, months: list, days: list,
                     valid_time = times_valid([start_time[i], end_time[i]], null=False)
                     valid_break = times_valid([break_start[i], break_end[i]])
                     if valid_time and valid_break:
-                        break_s = break_start[i] if break_start[i] is not pd.NaT else None
-                        break_e = break_end[i] if break_end[i] is not pd.NaT else None
+                        break_s = break_start[i] if type(break_start[i]) not in [pd.NaT, str] else None
+                        break_e = break_end[i] if type(break_end[i]) not in [pd.NaT, str] else None
                         valid_breaks = True
                         if break_s and break_e:
                             valid_breaks = breaks_valid([start_time[i], end_time[i], break_s, break_e])
@@ -312,7 +325,23 @@ def convert_time(time: str or pd.datetime) -> pd.Timedelta or str:
         return str(time)
 
 
-def schedule_import_handler(file: object, user: object or None, update, user_column=False):
+def schedule_import_handler(file: object, user: PersonnelProfile or None, update: bool, user_column=False):
+    """
+    Function handling Schedule import from excel. Function generates lists for each excel column and calls
+    schedule_creator function passing all lists as parameters - to validate data and create Monthly and DailySchedule
+    objects. with update parameter set to True - it also updates DailySchedule objects based on their month and day
+    fields.
+
+    Import file structure must contain columns : Year, Month, Day with int representation of data, Start_time,
+    End_time, Break_start, Break_end with time in HH:MM format, optional User column with full user name
+
+    :param file: file object (xlsx / xls) format
+    :param user: PersonnelProfile object
+    :param update: bool True for updating DailySchedule objects, False skips existing ones
+    :param user_column: bool True if user_column exists in the file, in such case function will try to read it's values
+    in order to create Monthly and DailySchedule for multiple users at once
+    :return:
+    """
     from xlrd import XLRDError
     try:
         data_opened = pd.read_excel(file)
